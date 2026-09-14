@@ -1,3 +1,5 @@
+## 环境检查
+
 PS C:\Users\Yu> java -version
 java version "17.0.10" 2024-01-16 LTS
 Java(TM) SE Runtime Environment (build 17.0.10+11-LTS-240)
@@ -33,6 +35,8 @@ request returned 500 Internal Server Error for API route and version http://%2F%
 PS C:\Users\Yu> docker compose version
 Docker Compose version v5.5.1
 
+## 概念回答
+
 Q1:
 将整体服务拆分成更加细小且功能完善独立的服务。
 
@@ -44,3 +48,8 @@ Q3:
 
 Q4:
 便于在不同环境下重复测试，以免丢失原先数据。
+
+## 问题记录
+
+1.在git上直接提交后 在仓库界面无法看到 但是日志中却有记录
+2.直接在git上进行二次提交 出现相关问题，最后在intellij idea中才提交成功
