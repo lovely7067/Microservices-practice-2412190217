@@ -107,3 +107,34 @@ sequenceDiagram
 | **事务**     | 引入 Seata 或本地消息表，保证“扣费 + 预约”的分布式事务一致性。 |
 | **监控**     | 引入 Prometheus + Grafana，监控服务健康度与业务指标。            |
 | **部署**     | 使用 Docker + Kubernetes 实现容器化编排与自动化部署。            |
+
+## 项目结构与运行方式（阶段一）
+
+```
+仓库根目录/
+├── monolith/          # 阶段一：Spring Boot 单体应用（Maven 工程）
+│   ├── pom.xml
+│   ├── mvnw / mvnw.cmd
+│   └── src/           # 源码与测试代码（包名 com.zjgsu.yz）
+├── docs/
+│   ├── homework/      # 历次作业记录
+│   └── project-proposal.md   # 项目立项说明
+└── README.md
+```
+
+**技术栈**：Java 21（LTS）+ Spring Boot 4.0.x + Maven（`mvnw` 包装器）
+
+```bash
+cd monolith
+
+# 运行测试
+./mvnw test                # Windows 下使用 .\mvnw.cmd test
+
+# 启动应用（默认端口 8080）
+./mvnw spring-boot:run     # Windows 下使用 .\mvnw.cmd spring-boot:run
+```
+
+**验证接口**：
+
+- `GET http://localhost:8080/api/ping` → `{"status":"UP","app":"gym","time":"..."}`
+- `GET http://localhost:8080/actuator/health` → `{"status":"UP",...}`

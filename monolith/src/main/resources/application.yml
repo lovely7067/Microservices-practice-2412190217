@@ -1,0 +1,17 @@
+# 椰汁健身房会员管理系统 - 基础配置
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gym
+
+# Actuator 端点配置：暴露健康检查，用于验证服务运行状态
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
