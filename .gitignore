@@ -7,3 +7,6 @@ gym/
 
 # 构建产物
 target/
+
+# 临时运行日志
+run.log
