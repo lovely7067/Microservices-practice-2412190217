@@ -108,33 +108,88 @@ sequenceDiagram
 | **监控**     | 引入 Prometheus + Grafana，监控服务健康度与业务指标。            |
 | **部署**     | 使用 Docker + Kubernetes 实现容器化编排与自动化部署。            |
 
-## 项目结构与运行方式（阶段一）
+## 项目结构与运行方式
 
 ```
 仓库根目录/
-├── monolith/          # 阶段一：Spring Boot 单体应用（Maven 工程）
+├── monolith/          # Spring Boot 单体应用（Maven 工程）
 │   ├── pom.xml
 │   ├── mvnw / mvnw.cmd
-│   └── src/           # 源码与测试代码（包名 com.zjgsu.yz）
+│   └── src/           # 源码与测试代码（包名 com.zjgsu.yz，分层：model/repository/service/web/dto/exception）
 ├── docs/
 │   ├── homework/      # 历次作业记录
+│   ├── database.md    # 数据库设计文档
 │   └── project-proposal.md   # 项目立项说明
 └── README.md
 ```
 
-**技术栈**：Java 21（LTS）+ Spring Boot 4.0.x + Maven（`mvnw` 包装器）
+**技术栈**：Java 21（LTS）+ Spring Boot 4.0.x + Spring Data JPA + MySQL（测试用 H2）+ Maven（`mvnw` 包装器）
+
+## 本地 MySQL 安装与建库
+
+1. **安装 MySQL 8.x**：从 https://dev.mysql.com/downloads/installer/ 下载 MySQL Installer 安装（或使用 phpStudy/XAMPP 自带的 MySQL），安装时设置 root 密码。
+2. **建库**：用命令行或 Navicat 执行：
+   ```sql
+   CREATE DATABASE gym DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   ```
+3. **连接配置**：修改 `monolith/src/main/resources/application.yml` 中的 `spring.datasource.username` / `password` 为本机 MySQL 的实际账号密码（默认 `root/root`，端口 3306）。
+4. 表结构由 JPA 自动创建（`ddl-auto: update`），无需手工执行建表脚本；设计说明见 `docs/database.md`。
+5. 运行测试不需要 MySQL（自动切换 H2 内存数据库）。
+
+## 启动与测试
 
 ```bash
 cd monolith
 
-# 运行测试
+# 运行测试（H2 内存库，可重复执行）
 ./mvnw test                # Windows 下使用 .\mvnw.cmd test
 
-# 启动应用（默认端口 8080）
+# 启动应用（需本地 MySQL，默认端口 8080）
 ./mvnw spring-boot:run     # Windows 下使用 .\mvnw.cmd spring-boot:run
 ```
 
-**验证接口**：
+## 验证接口
 
 - `GET http://localhost:8080/api/ping` → `{"status":"UP","app":"gym","time":"..."}`
 - `GET http://localhost:8080/actuator/health` → `{"status":"UP",...}`
+
+### curl 示例（核心业务：会员登记与办卡）
+
+**1. 登记会员（创建，返回 201）**
+
+```bash
+curl -X POST http://localhost:8080/api/members \
+  -H "Content-Type: application/json" \
+  -d '{"name":"张三","phone":"13800001111","gender":"男","birthday":"1995-06-01"}'
+```
+
+**2. 查询全部会员**
+
+```bash
+curl http://localhost:8080/api/members
+```
+
+**3. 为会员办卡（创建会员卡，返回 201）**
+
+```bash
+curl -X POST http://localhost:8080/api/members/1/cards \
+  -H "Content-Type: application/json" \
+  -d '{"cardType":"TIMES","startDate":"2026-10-18","endDate":"2027-10-18","remainingTimes":30}'
+```
+
+**4. 查询某会员名下的会员卡**
+
+```bash
+curl http://localhost:8080/api/members/1/cards
+```
+
+> Windows PowerShell 下如遇引号转义问题，建议使用 Git Bash 执行上述 curl 命令。
+>
+> 错误响应：重复手机号 → 409；卡结束日期早于/等于开始日期或次卡剩余次数 ≤ 0 → 400；为不存在的会员办卡 → 404。
+
+## 当前尚未实现的业务能力
+
+- 真实支付渠道对接（当前为模拟收费）
+- 硬件门禁/闸机对接
+- 多租户 SaaS 化改造
+- 会员卡核销扣次与到期状态自动流转（计划后续迭代）

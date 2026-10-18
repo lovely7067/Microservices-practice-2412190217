@@ -6,6 +6,20 @@ spring:
   application:
     name: gym
 
+  # MySQL 数据源配置（运行时使用，请按本机实际情况修改用户名与密码）
+  datasource:
+    url: jdbc:mysql://localhost:3306/gym?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # JPA 配置：自动根据实体更新表结构
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    show-sql: true
+
 # Actuator 端点配置：暴露健康检查，用于验证服务运行状态
 management:
   endpoints:

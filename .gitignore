@@ -2,8 +2,8 @@
 .idea/
 *.iml
 
-# 旧的项目空壳目录（工程已迁移至 monolith/）
-gym/
+# 旧的项目空壳目录（仅仓库根目录下的 gym/，工程已迁移至 monolith/）
+/gym/
 
 # 构建产物
 target/

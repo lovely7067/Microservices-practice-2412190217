@@ -1,0 +1,25 @@
+# 测试环境配置：使用 H2 内存数据库，无需本地 MySQL 即可重复运行测试
+spring:
+  datasource:
+    url: jdbc:h2:mem:gym;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+    show-sql: false
+    # 先由 Hibernate 建表，再执行 data.sql 初始化种子数据
+    defer-datasource-initialization: true
+
+  sql:
+    init:
+      mode: always
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
