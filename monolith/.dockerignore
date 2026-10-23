@@ -1,0 +1,17 @@
+# 本地构建产物
+target/
+*.log
+run.log
+
+# IDE 配置
+.idea/
+*.iml
+.vscode/
+
+# 版本控制
+.git/
+.gitignore
+
+# Docker 自身文件（构建上下文中无需）
+Dockerfile
+.dockerignore

@@ -187,6 +187,54 @@ curl http://localhost:8080/api/members/1/cards
 >
 > 错误响应：重复手机号 → 409；卡结束日期早于/等于开始日期或次卡剩余次数 ≤ 0 → 400；为不存在的会员办卡 → 404。
 
+## 容器化运行（第五周：Docker + Compose）
+
+应用与 MySQL 已容器化，可一键构建镜像并启动整套环境。
+
+**前置条件**：已安装 Docker Desktop 并能拉取镜像（网络受限时无法拉取基础镜像）。
+
+**1. 准备环境变量**
+
+```bash
+Copy-Item .env.example .env    # Windows PowerShell；macOS/Linux 用 cp .env.example .env
+```
+
+按需修改 `.env`：`MYSQL_ROOT_PASSWORD`、`MYSQL_DATABASE`、`MYSQL_USERNAME`、`MYSQL_HOST_PORT`（默认 3307，本机 3306 已被本地 MySQL 占用）、`APP_PORT`（默认 8080）。`.env` 已在 `.gitignore` 中，不会提交。
+
+**2. 一键构建并启动**
+
+```bash
+docker compose up -d --build      # 构建镜像并后台启动
+docker compose ps                 # 查看状态（mysql 应为 healthy）
+docker compose logs -f app        # 查看应用日志
+```
+
+启动后应用监听宿主机 `http://localhost:8080`，MySQL 容器映射到宿主机 `3307` 端口。
+
+**3. 常用命令**
+
+```bash
+docker compose down               # 停止并删除容器（命名卷保留，数据不丢）
+docker compose down -v            # 连同数据卷一起删除（数据清空）
+docker volume ls                  # 确认数据卷 gym-mysql-data 是否保留
+docker compose up -d              # 再次一键启动
+```
+
+**4. 容器内业务验证（与本地运行一致）**
+
+```bash
+curl http://localhost:8080/actuator/health
+curl http://localhost:8080/api/ping
+curl -X POST http://localhost:8080/api/members -H "Content-Type: application/json" -d '{"name":"容器化会员","phone":"13900007777","gender":"男","birthday":"1996-04-10"}'
+curl http://localhost:8080/api/members
+curl -X POST http://localhost:8080/api/members/1/cards -H "Content-Type: application/json" -d '{"cardType":"TIMES","startDate":"2026-10-23","endDate":"2027-10-23","remainingTimes":30}'
+curl http://localhost:8080/api/members/1/cards
+```
+
+**5. 数据持久化验证**
+
+`docker compose down` 删除容器后重新 `docker compose up -d`，之前创建的会员与会员卡数据仍可查询（数据保存在命名卷 `gym-mysql-data` 中）。
+
 ## 当前尚未实现的业务能力
 
 - 真实支付渠道对接（当前为模拟收费）
