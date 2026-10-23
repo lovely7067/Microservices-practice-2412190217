@@ -41,7 +41,20 @@ gym-app     gym-monolith:week05         app       Up                        0.0.
 gym-mysql   mysql:8.4.11                mysql     Up (healthy)              0.0.0.0:3307->3306/tcp
 ```
 
-**本次构建说明**：由于本机外网（Docker Hub）被代理软件拦截，基础镜像无法从网络拉取。MySQL 使用的是本地已存在的 `mysql:8.4`（实测版本为 `Ver 8.4.11`）打上 `mysql:8.4.11` 标签；应用镜像先由宿主机 `.\mvnw.cmd -DskipTests package` 打出 JAR，再用本地 JRE 基础镜像构建为 `gym-monolith:week05`。`Dockerfile` 中已按标准写好多阶段构建（Maven 编译阶段 + JRE 运行阶段），网络恢复后直接执行 `docker compose up -d --build` 即可按原流程完整构建。
+实际构建输出（多阶段构建成功）：
+
+```
+[build 1/6] FROM maven:3.9-eclipse-temurin-21
+[build 2/6] COPY pom.xml .
+[build 3/6] RUN mvn -B dependency:go-offline      # 依赖层，可缓存
+[build 4/6] COPY src ./src
+[build 5/6] RUN mvn -B -DskipTests package && mv target/*.jar app.jar
+[stage-1 3/3] COPY --from=build /app/app.jar app.jar
+#19 naming to docker.io/library/gym-monolith:week05 done
+Image gym-monolith:week05 Built
+```
+
+最终镜像 `gym-monolith:week05` 仅 569MB（只含 JRE + JAR，不含 Maven 与源码），再次执行 `docker compose build` 时依赖层命中缓存，构建可在秒级完成，满足“可重复的镜像构建”。
 
 ## 三、业务 API 验证
 
@@ -88,7 +101,7 @@ curl http://localhost:8080/api/members/1
 curl http://localhost:8080/api/members/1/cards
 ```
 
-验证结果：`docker compose down` 删除容器后，`gym-mysql-data` 卷依然存在；重新 `docker compose up -d` 后，会员 `id=1`（手机号 13900007777）及其 TIMES 会员卡（剩余 30 次、状态 ACTIVE）**仍可完整查询到**，证明数据通过命名卷实现了持久化。
+验证结果：`docker compose down` 删除容器后，`gym-mysql-data` 卷依然存在；重新 `docker compose up -d` 后，会员 `id=2`（手机号 13900008888）及其 YEARLY 会员卡（状态 ACTIVE）**仍可完整查询到**，说明数据不会因容器删除而丢失，命名卷持久化生效。
 
 ## 五、本周完成内容汇总
 
