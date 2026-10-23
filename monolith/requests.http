@@ -1,0 +1,17 @@
+### 1. 健康检查
+GET http://localhost:8080/actuator/health
+
+### 2. 创建会员（创建）
+POST http://localhost:8080/api/members
+Content-Type: application/json
+
+{"name":"测试会员","phone":"13900009999","gender":"女","birthday":"2000-01-01"}
+
+### 3. 查询会员列表（查询）
+GET http://localhost:8080/api/members
+
+### 4. 为会员办卡（创建）
+POST http://localhost:8080/api/members/2/cards
+Content-Type: application/json
+
+{"cardType":"TIMES","startDate":"2026-10-23","endDate":"2027-10-23","remainingTimes":50}
