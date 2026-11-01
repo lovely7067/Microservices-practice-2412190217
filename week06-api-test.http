@@ -1,0 +1,65 @@
+##############################################################################
+# 第六周微服务接口验证脚本（IDEA HTTP Client 专用）
+# 用法：将光标放在每个请求上，点击请求行左侧的绿色 ▶ 运行，右侧面板会显示状态码与响应
+##############################################################################
+
+### 1. member-service 健康检查（应 200 status=UP）
+GET http://localhost:8081/actuator/health
+
+### 2. card-service 健康检查（应 200 status=UP）
+GET http://localhost:8082/actuator/health
+
+### 3. checkin-service 健康检查（应 200 status=UP）
+GET http://localhost:8083/actuator/health
+
+### 4. 登记会员（member-service，应 201）
+# 注意：同一手机号只能注册一次，重复运行会返回 409，属正常现象（正好用于验证唯一性规则）
+POST http://localhost:8081/api/members
+Content-Type: application/json
+
+{"name":"验证会员","phone":"13700003333","gender":"男","birthday":"1998-03-03"}
+
+### 5. 办卡（card-service，内部会 RestTemplate 调用 member-service 校验会员，应 201）
+POST http://localhost:8082/api/cards
+Content-Type: application/json
+
+{"memberId":1,"cardType":"TIMES","startDate":"2026-11-01","endDate":"2027-11-01","remainingTimes":30}
+
+### 6. 入场核验（checkin-service，内部会 RestTemplate 调用 card-service 验卡，应 201）
+POST http://localhost:8083/api/checkins
+Content-Type: application/json
+
+{"memberId":1,"cardId":1}
+
+### 7. 失败场景：为不存在的会员办卡（应 404）
+POST http://localhost:8082/api/cards
+Content-Type: application/json
+
+{"memberId":99999,"cardType":"MONTHLY","startDate":"2026-11-01","endDate":"2027-11-01"}
+
+### 8. 失败场景：用别人的会员卡入场（应 400）
+POST http://localhost:8083/api/checkins
+Content-Type: application/json
+
+{"memberId":99,"cardId":1}
+
+### 9. 失败场景：用不存在的会员卡入场（应 404）
+POST http://localhost:8083/api/checkins
+Content-Type: application/json
+
+{"memberId":1,"cardId":88888}
+
+##############################################################################
+# 第 10 步：依赖服务停机场景（503）——需先在 PowerShell 执行：
+#   docker compose stop member-service
+# 然后再运行下面的请求，应返回 503 Service Unavailable
+# 验证不写脏数据（PowerShell 执行，记录数不应增加）：
+#   docker exec gym-mysql-ms mysql -ucard_u -pcard_pass gym_card -e "SELECT COUNT(*) AS cnt FROM membership_card;"
+# 完成后恢复服务：docker compose start member-service
+##############################################################################
+
+### 10. 失败场景：member-service 停机时办卡（应 503 且不写库）
+POST http://localhost:8082/api/cards
+Content-Type: application/json
+
+{"memberId":1,"cardType":"MONTHLY","startDate":"2026-11-01","endDate":"2027-11-01"}
