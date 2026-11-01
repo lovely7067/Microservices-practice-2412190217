@@ -1,0 +1,36 @@
+# card-service 配置
+server:
+  port: 8082
+
+spring:
+  application:
+    name: card-service
+
+  # 数据源：card-service 独享 gym_card 库（容器内由环境变量覆盖为 mysql-ms 服务名连接）
+  datasource:
+    url: jdbc:mysql://localhost:3306/gym_card?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+# 跨服务调用配置：member-service 地址（可通过环境变量 MEMBER_SERVICE_BASEURL 覆盖，
+# Compose 中覆盖为 http://member-service:8081，通过服务名通信，不使用 localhost）
+member-service:
+  base-url: http://localhost:8081
+  connect-timeout-ms: 2000
+  read-timeout-ms: 3000
+
+# 健康检查端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

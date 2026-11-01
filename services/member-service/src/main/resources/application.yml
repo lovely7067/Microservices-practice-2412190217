@@ -1,0 +1,29 @@
+# member-service 配置
+server:
+  port: 8081
+
+spring:
+  application:
+    name: member-service
+
+  # 数据源：member-service 独享 gym_member 库（容器内由环境变量覆盖为 mysql-ms 服务名连接）
+  datasource:
+    url: jdbc:mysql://localhost:3306/gym_member?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+# 健康检查端点（每个服务必须提供健康接口）
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

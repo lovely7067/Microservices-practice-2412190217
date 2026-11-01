@@ -187,6 +187,34 @@ curl http://localhost:8080/api/members/1/cards
 >
 > 错误响应：重复手机号 → 409；卡结束日期早于/等于开始日期或次卡剩余次数 ≤ 0 → 400；为不存在的会员办卡 → 404。
 
+## 微服务架构（第 06 周）
+
+单体系统已拆分为 3 个微服务（设计文档：`docs/microservices-design.md`），单体版本保留在 `monolith/` 可运行：
+
+| 服务 | 端口 | 职责 | 独立数据库 | 基础包 |
+| --- | --- | --- | --- | --- |
+| `services/member-service` | 8081 | 会员档案（登记/查询） | `gym_member`（账号 member_u） | `com.zjgsu.yz.member` |
+| `services/card-service` | 8082 | 会员卡（办卡前 HTTP 调 member-service 校验） | `gym_card`（账号 card_u） | `com.zjgsu.yz.card` |
+| `services/checkin-service` | 8083 | 入场核验（验卡前 HTTP 调 card-service） | `gym_checkin`（账号 checkin_u） | `com.zjgsu.yz.checkin` |
+
+**一键启动**（根目录 compose.yaml，共 6 个容器：单体 2 个 + 微服务 MySQL 实例 + 3 个微服务）：
+
+```bash
+docker compose up -d --build
+bash scripts/smoke-test.sh      # 调用每个服务的健康接口（Git Bash）
+```
+
+**运行单个服务的测试**（Java 21）：
+
+```bash
+mvn -f services/member-service/pom.xml test    # 本地安装了 mvn 时
+monolith\mvnw.cmd -f services/member-service/pom.xml test    # 或用包装器（Windows）
+monolith\mvnw.cmd -f services/card-service/pom.xml test
+monolith\mvnw.cmd -f services/checkin-service/pom.xml test
+```
+
+**跨服务调用**：card-service 办卡前 RestTemplate 调用 member-service；checkin-service 入场前调用 card-service。地址在各自 `application.yml`（`member-service.base-url` 等），环境变量 `MEMBER_SERVICE_BASE_URL` / `CARD_SERVICE_BASE_URL` 可覆盖（Compose 已配置为服务名地址）；连接超时 2s、读取超时 3s；依赖服务不可用返回 503 且不写本地数据。
+
 ## 容器化运行（第五周：Docker + Compose）
 
 应用与 MySQL 已容器化，可一键构建镜像并启动整套环境。

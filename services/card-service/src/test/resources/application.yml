@@ -1,0 +1,17 @@
+# 测试环境：H2 内存库，无需 MySQL，可重复运行
+spring:
+  datasource:
+    url: jdbc:h2:mem:gym_card;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+
+# 测试中不真正发起 HTTP 调用（单元测试用 Mockito 模拟 MemberClient），但需提供配置项
+member-service:
+  base-url: http://localhost:8081
+  connect-timeout-ms: 2000
+  read-timeout-ms: 3000
