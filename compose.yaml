@@ -67,20 +67,60 @@ services:
       start_period: 15s
     restart: unless-stopped
 
+  # ========== Nacos 注册中心（第 07 周：服务发现） ==========
+  # 控制台 18080:8080（浏览器访问 http://localhost:18080）；服务端 API 8848；SDK gRPC 9848
+  # 先独立启动 nacos 并初始化管理员密码，再启动业务服务（docker compose up -d nacos）
+  nacos:
+    image: nacos/nacos-server:v3.2.4
+    container_name: gym-nacos
+    environment:
+      MODE: standalone
+      # 开启鉴权；Token 密钥（Base64，长度必须 >= 32 字节）与身份钥匙放本地 .env，不提交真实凭据
+      NACOS_AUTH_ENABLE: ${NACOS_AUTH_ENABLE:-true}
+      NACOS_AUTH_TOKEN: ${NACOS_AUTH_TOKEN}
+      NACOS_AUTH_IDENTITY_KEY: ${NACOS_AUTH_IDENTITY_KEY}
+      NACOS_AUTH_IDENTITY_VALUE: ${NACOS_AUTH_IDENTITY_VALUE}
+      # 首次初始化管理员（nacos）密码
+      NACOS_AUTH_ADMIN_PASSWORD: ${NACOS_PASSWORD}
+      TZ: Asia/Shanghai
+    ports:
+      - "${NACOS_CONSOLE_HOST_PORT:-18080}:8080"
+      - "${NACOS_SERVER_HOST_PORT:-8848}:8848"
+      - "9848:9848"
+    volumes:
+      # 持久化：注册数据存命名卷，容器重建不丢失
+      - nacos-data:/home/nacos/data
+    networks:
+      - gym-net
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/v3/console/health/readiness"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+
   # ========== 微服务：member-service（会员档案） ==========
   member-service:
     build:
       context: ./services/member-service
-    image: gym-member-service:week06
+    image: gym-member-service:week07
     container_name: gym-member-service
     depends_on:
       mysql-ms:
+        condition: service_healthy
+      nacos:
         condition: service_healthy
     environment:
       # 通过 Compose 服务名 mysql-ms 连接独立数据库，不使用 localhost
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-ms:3306/gym_member?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
       SPRING_DATASOURCE_USERNAME: member_u
       SPRING_DATASOURCE_PASSWORD: member_pass
+      # Nacos 注册：SDK 通过 gRPC 9848 通信（由 server-addr 自动推导，无需额外配置）
+      NACOS_SERVER_ADDR: nacos:8848
+      NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
+      NACOS_PASSWORD: ${NACOS_PASSWORD}
+      NACOS_GROUP: ${NACOS_GROUP:-GYM_YZ_GROUP}
       TZ: Asia/Shanghai
     ports:
       - "8081:8081"
@@ -92,10 +132,12 @@ services:
   card-service:
     build:
       context: ./services/card-service
-    image: gym-card-service:week06
+    image: gym-card-service:week07
     container_name: gym-card-service
     depends_on:
       mysql-ms:
+        condition: service_healthy
+      nacos:
         condition: service_healthy
       member-service:
         condition: service_started
@@ -103,8 +145,11 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-ms:3306/gym_card?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
       SPRING_DATASOURCE_USERNAME: card_u
       SPRING_DATASOURCE_PASSWORD: card_pass
-      # 跨服务调用：通过服务名 member-service 通信（覆盖 application.yml 中的 localhost 默认值）
-      MEMBER_SERVICE_BASE_URL: http://member-service:8081
+      # 跨服务调用改为服务发现：不再配置固定地址，由 DiscoveryClient 按服务名 member-service 解析实例
+      NACOS_SERVER_ADDR: nacos:8848
+      NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
+      NACOS_PASSWORD: ${NACOS_PASSWORD}
+      NACOS_GROUP: ${NACOS_GROUP:-GYM_YZ_GROUP}
       TZ: Asia/Shanghai
     ports:
       - "8082:8082"
@@ -116,10 +161,12 @@ services:
   checkin-service:
     build:
       context: ./services/checkin-service
-    image: gym-checkin-service:week06
+    image: gym-checkin-service:week07
     container_name: gym-checkin-service
     depends_on:
       mysql-ms:
+        condition: service_healthy
+      nacos:
         condition: service_healthy
       card-service:
         condition: service_started
@@ -127,8 +174,11 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-ms:3306/gym_checkin?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
       SPRING_DATASOURCE_USERNAME: checkin_u
       SPRING_DATASOURCE_PASSWORD: checkin_pass
-      # 跨服务调用：通过服务名 card-service 通信（覆盖 application.yml 中的 localhost 默认值）
-      CARD_SERVICE_BASE_URL: http://card-service:8082
+      # 跨服务调用改为服务发现：不再配置固定地址，由 DiscoveryClient 按服务名 card-service 解析实例
+      NACOS_SERVER_ADDR: nacos:8848
+      NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
+      NACOS_PASSWORD: ${NACOS_PASSWORD}
+      NACOS_GROUP: ${NACOS_GROUP:-GYM_YZ_GROUP}
       TZ: Asia/Shanghai
     ports:
       - "8083:8083"
@@ -143,6 +193,9 @@ volumes:
   # 微服务专用数据卷
   mysql-ms-data:
     name: gym-ms-mysql-data
+  # Nacos 注册数据卷
+  nacos-data:
+    name: gym-nacos-data
 
 networks:
   gym-net:

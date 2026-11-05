@@ -10,8 +10,16 @@ spring:
       ddl-auto: create-drop
     open-in-view: false
 
+  # 测试不依赖真实 Nacos：关闭服务发现与自动注册
+  cloud:
+    nacos:
+      discovery:
+        enabled: false
+    service-registry:
+      auto-registration:
+        enabled: false
+
 # 测试中不真正发起 HTTP 调用（单元测试用 Mockito 模拟 CardClient），但需提供配置项
-card-service:
-  base-url: http://localhost:8082
+http-client:
   connect-timeout-ms: 2000
   read-timeout-ms: 3000

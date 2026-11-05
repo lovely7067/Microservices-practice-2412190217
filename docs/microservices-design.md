@@ -80,3 +80,14 @@ flowchart LR
 ## 六、"远端成功、本地失败"窗口说明
 
 以入场核验为例：checkin-service 调用 card-service 验卡成功（远端成功）之后、本地 `checkin_record` 落库之前，如果本地数据库故障，会出现**卡已被"消费核验"但本地没有入场记录**的窗口——远端状态与本地状态短暂不一致。本周按作业要求只做顺序流程与基本失败处理（明确报错、不写脏数据），不实现跨服务原子事务、自动补偿或消息机制；该窗口的消除（如本地事务 + 事后对账 / 消息队列）留待后续演进。
+
+---
+
+## 第 07 周补充：Nacos 服务注册与发现
+
+- 注册中心：Nacos Server v3.2.4（compose.yaml 中 `nacos` 服务，控制台 18080、服务端 8848、SDK gRPC 9848，独立数据卷持久化）
+- 服务名保持不变：`member-service` / `card-service` / `checkin-service`（即各自 `spring.application.name`），与本文档上方拆分映射一致；同一业务服务的多实例使用相同服务名
+- 分组：`GYM_YZ_GROUP`（个人项目独立分组，与课堂示例隔离）；命名空间使用默认 public
+- 依赖版本：Spring Cloud Alibaba 2025.1.0.0 BOM（适配 Spring Boot 4.0.x），仅引入 Discovery Starter，不引入 Config Starter
+- 调用方式变化：card-service → member-service、checkin-service → card-service 均改为每次操作前 `DiscoveryClient.getInstances("服务名")` 解析实例，使用实例 URI + 原业务路径发起 HTTP 请求；不再保存固定地址（`member-service.base-url` / `CARD_SERVICE_BASE_URL` 配置已删除）
+- 失败处理：实例列表为空 → 503（RemoteServiceException）；HTTP 404 → 原 404 业务响应；调用失败/超时 → 503，不跳过校验、不写本地数据

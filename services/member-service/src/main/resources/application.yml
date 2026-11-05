@@ -18,6 +18,16 @@ spring:
       ddl-auto: update
     open-in-view: false
 
+  # Nacos 注册中心：地址与凭据通过环境变量注入（Compose 中 NACOS_SERVER_ADDR=nacos:8848）
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        username: ${NACOS_USERNAME:nacos}
+        password: ${NACOS_PASSWORD:}
+        # 个人项目独立分组，与课堂示例隔离
+        group: ${NACOS_GROUP:GYM_YZ_GROUP}
+
 # 健康检查端点（每个服务必须提供健康接口）
 management:
   endpoints:

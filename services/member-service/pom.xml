@@ -16,7 +16,29 @@
 
 	<properties>
 		<java.version>21</java.version>
+		<spring-cloud.version>2025.1.0</spring-cloud.version>
+		<spring-cloud-alibaba.version>2025.1.0.0</spring-cloud-alibaba.version>
 	</properties>
+
+	<!-- 课程统一 BOM：Spring Cloud 与 Spring Cloud Alibaba 版本集中管理，不单独覆盖 Nacos Client 版本 -->
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.cloud</groupId>
+				<artifactId>spring-cloud-dependencies</artifactId>
+				<version>${spring-cloud.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+			<dependency>
+				<groupId>com.alibaba.cloud</groupId>
+				<artifactId>spring-cloud-alibaba-dependencies</artifactId>
+				<version>${spring-cloud-alibaba.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 
 	<dependencies>
 		<dependency>
@@ -34,6 +56,11 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+		<!-- Nacos 服务发现（本周不引入 Config Starter） -->
+		<dependency>
+			<groupId>com.alibaba.cloud</groupId>
+			<artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>com.mysql</groupId>

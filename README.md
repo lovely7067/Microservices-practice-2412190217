@@ -213,7 +213,48 @@ monolith\mvnw.cmd -f services/card-service/pom.xml test
 monolith\mvnw.cmd -f services/checkin-service/pom.xml test
 ```
 
-**跨服务调用**：card-service 办卡前 RestTemplate 调用 member-service；checkin-service 入场前调用 card-service。地址在各自 `application.yml`（`member-service.base-url` 等），环境变量 `MEMBER_SERVICE_BASE_URL` / `CARD_SERVICE_BASE_URL` 可覆盖（Compose 已配置为服务名地址）；连接超时 2s、读取超时 3s；依赖服务不可用返回 503 且不写本地数据。
+**跨服务调用**：card-service 办卡前调用 member-service；checkin-service 入场前调用 card-service。第 07 周起改为 **Nacos 服务发现**：每次调用前通过 `DiscoveryClient.getInstances("服务名")` 获取当前实例（不在启动时读取一次并永久保存地址），实例列表为空或调用失败返回 503 且不写本地数据；保留 HTTP 连接超时 2s、读取超时 3s。仅取第一个实例，不实现轮询、权重路由、自动重试或熔断。
+
+## Nacos 服务注册与发现（第 07 周）
+
+三个业务服务通过 `spring-cloud-starter-alibaba-nacos-discovery`（Spring Cloud Alibaba **2025.1.0.0** BOM，适配 Spring Boot 4.0.x）注册到 Nacos：
+
+| 配置项 | 值 | 说明 |
+| --- | --- | --- |
+| 服务名 | `member-service` / `card-service` / `checkin-service` | 与 `docs/microservices-design.md` 一致，同一服务多实例同名 |
+| 分组 | `GYM_YZ_GROUP` | 个人项目独立分组，与课堂示例隔离 |
+| 控制台 | http://localhost:18080 | v3 控制台独立端口（容器内 8080） |
+| 服务端 API | 8848 | 宿主机映射，SDK gRPC 走 9848 |
+| 命名空间 | 默认（public） | 首次部署使用默认命名空间 |
+
+**启动步骤**（真实密钥/密码只放本地 `.env`，提交的 `.env.example` 仅为占位模板）：
+
+```bash
+# 1. 准备环境变量（.env 中需包含 NACOS_AUTH_TOKEN / NACOS_AUTH_IDENTITY_KEY /
+#    NACOS_AUTH_IDENTITY_VALUE / NACOS_PASSWORD / NACOS_GROUP）
+cp .env.example .env    # 然后填入自己的值
+
+# 2. 先独立启动 Nacos 并初始化管理员（首次执行一次）
+docker compose up -d nacos
+# 等控制台就绪后初始化管理员密码（返回 username/password 即成功）：
+curl -X POST "http://localhost:8848/nacos/v3/auth/user/admin" -d "password=你的密码"
+
+# 3. 启动业务服务与数据库
+docker compose up -d --build
+
+# 4. 冒烟测试（Nacos 控制台就绪 + 注册列表 + 三服务健康，任一失败退出非零）
+bash scripts/smoke-test.sh
+```
+
+**控制台查看**：浏览器打开 http://localhost:18080 ，用 `.env` 中的 `NACOS_USERNAME`/`NACOS_PASSWORD` 登录，左侧「服务管理 → 服务列表」选分组 `GYM_YZ_GROUP`，可看到 3 个服务及其实例 IP 与端口。
+
+**运行单个服务的测试**（不依赖真实 Nacos 或 MySQL，测试配置已关闭自动注册，沿用 H2 与模拟远程响应）：
+
+```bash
+monolith\mvnw.cmd -f services/member-service/pom.xml test    # Windows 包装器
+monolith\mvnw.cmd -f services/card-service/pom.xml test
+monolith\mvnw.cmd -f services/checkin-service/pom.xml test
+```
 
 ## 容器化运行（第五周：Docker + Compose）
 
