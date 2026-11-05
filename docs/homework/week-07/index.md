@@ -69,7 +69,7 @@ docker compose stop member-service
 # 用新的有效业务参数发起办卡：
 POST /api/cards {"memberId":1,"cardType":"YEARLY","startDate":"2026-11-05","endDate":"2027-11-05"}
 # 实际结果：503 Service Unavailable（DiscoveryClient 无可用实例，明确返回依赖不可用错误）
-# 数据检查：gym_card 记录数不变（4），确认没有绕过校验新增本地业务记录
+# 数据检查：gym_card 记录数与下线前一致（下线前后各查一次 COUNT(*) 对比），确认没有绕过校验新增本地业务记录
 ```
 
 **③ 恢复服务**：
