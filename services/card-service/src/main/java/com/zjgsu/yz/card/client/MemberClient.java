@@ -1,53 +1,33 @@
 package com.zjgsu.yz.card.client;
 
-import java.net.URI;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
-import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Component;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
-
-import com.zjgsu.yz.card.exception.NotFoundException;
-import com.zjgsu.yz.card.exception.RemoteServiceException;
+import com.zjgsu.yz.card.config.FeignErrorConfig;
 import com.zjgsu.yz.card.web.dto.MemberDto;
 
 /**
- * member-service 的调用客户端。
- * 本周改为服务发现方式：不再保存固定地址，每次调用前通过 DiscoveryClient
- * 按服务名 member-service（与对方 spring.application.name 一致）解析当前实例，
- * 再用实例的 URI 和原业务路径发送 HTTP 请求。
- * - 会员不存在（404）→ 抛出 NotFoundException
- * - 实例列表为空 / 请求失败 / 超时 → 抛出 RemoteServiceException（503），由调用方中止请求
+ * member-service 的 OpenFeign 客户端（第 08 周）。
+ *
+ * <p>使用服务名调用而不是写死容器 IP：{@code name} 即被调方在 Nacos 注册的
+ * {@code spring.application.name}，同一服务的多实例经 Spring Cloud LoadBalancer
+ * 以轮询方式分发（负载均衡验证见 scripts/e2e-test.sh）。</p>
+ *
+ * <p>失败处理：HTTP 错误经 {@link FeignErrorConfig} 解码——
+ * 404 → {@code NotFoundException}（业务不存在），其余 → {@code RemoteServiceException}（503）；
+ * 无可用实例等本地异常由 GlobalExceptionHandler 统一映射为 503。
+ * 校验失败时调用方中止流程，绝不写入本地数据。</p>
  */
-@Component
-public class MemberClient {
+@FeignClient(name = "member-service", path = "/api/members", configuration = FeignErrorConfig.class)
+public interface MemberClient {
 
-	/** 目标服务名：与 member-service 的 spring.application.name 一致 */
-	public static final String MEMBER_SERVICE_ID = "member-service";
-
-	private final RestTemplate restTemplate;
-	private final DiscoveryInstanceResolver instanceResolver;
-
-	public MemberClient(RestTemplate restTemplate, DiscoveryInstanceResolver instanceResolver) {
-		this.restTemplate = restTemplate;
-		this.instanceResolver = instanceResolver;
-	}
-
-	public MemberDto getMember(Long memberId) {
-		// 每次操作重新解析实例，不在启动时读取一次并永久保存地址
-		URI baseUri = instanceResolver.resolve(MEMBER_SERVICE_ID);
-		String url = baseUri + "/api/members/" + memberId;
-		try {
-			ResponseEntity<MemberDto> response = restTemplate.getForEntity(url, MemberDto.class);
-			if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-				return response.getBody();
-			}
-			throw new NotFoundException("会员不存在: id=" + memberId);
-		} catch (HttpClientErrorException.NotFound e) {
-			throw new NotFoundException("会员不存在: id=" + memberId);
-		} catch (RestClientException e) {
-			throw new RemoteServiceException("member-service 调用失败（" + e.getMessage() + "），无法校验会员");
-		}
-	}
+	/**
+	 * 按 ID 查询会员（办卡前必须校验会员存在）。
+	 *
+	 * @param memberId 会员 ID
+	 * @return 会员信息；会员不存在时抛出 NotFoundException（404）
+	 */
+	@GetMapping("/{id}")
+	MemberDto getMember(@PathVariable("id") Long memberId);
 }

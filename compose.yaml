@@ -100,11 +100,13 @@ services:
       start_period: 30s
     restart: unless-stopped
 
-  # ========== 微服务：member-service（会员档案） ==========
+  # ========== 微服务：member-service（会员档案，实例 1） ==========
+  # 第 08 周负载均衡验证：member-service 与 member-service-2 以相同 spring.application.name
+  # 注册到 Nacos（同名 2 实例），绑定不同宿主机端口（8081 / 8085）
   member-service:
     build:
       context: ./services/member-service
-    image: gym-member-service:week07
+    image: gym-member-service:week08
     container_name: gym-member-service
     depends_on:
       mysql-ms:
@@ -121,11 +123,54 @@ services:
       NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
       NACOS_PASSWORD: ${NACOS_PASSWORD}
       NACOS_GROUP: ${NACOS_GROUP:-GYM_YZ_GROUP}
+      # 实例标识：请求日志 GYM-INSTANCE 前缀，用于负载均衡验证
+      INSTANCE_NAME: member-1
       TZ: Asia/Shanghai
     ports:
       - "8081:8081"
     networks:
       - gym-net
+    healthcheck:
+      # 应用级健康检查：调用方依赖 healthy 启动，确保其订阅 Nacos 时本实例已完成注册
+      test: ["CMD", "curl", "-fsS", "http://localhost:8081/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+
+  # ========== 微服务：member-service-2（会员档案，实例 2，同名多实例） ==========
+  member-service-2:
+    build:
+      context: ./services/member-service
+    image: gym-member-service:week08
+    container_name: gym-member-service-2
+    depends_on:
+      mysql-ms:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-ms:3306/gym_member?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+      SPRING_DATASOURCE_USERNAME: member_u
+      SPRING_DATASOURCE_PASSWORD: member_pass
+      NACOS_SERVER_ADDR: nacos:8848
+      NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
+      NACOS_PASSWORD: ${NACOS_PASSWORD}
+      NACOS_GROUP: ${NACOS_GROUP:-GYM_YZ_GROUP}
+      INSTANCE_NAME: member-2
+      TZ: Asia/Shanghai
+    # 避免与实例 1 绑定同一宿主机端口：映射到 8085
+    ports:
+      - "8085:8081"
+    networks:
+      - gym-net
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8081/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
     restart: unless-stopped
 
   # ========== 微服务：card-service（会员卡） ==========
@@ -139,8 +184,12 @@ services:
         condition: service_healthy
       nacos:
         condition: service_healthy
+      # 第 08 周：等两个 member 实例都健康后再启动调用方，
+      # 避免订阅列表缺实例导致负载均衡只命中单实例（实测时序问题）
       member-service:
-        condition: service_started
+        condition: service_healthy
+      member-service-2:
+        condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-ms:3306/gym_card?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
       SPRING_DATASOURCE_USERNAME: card_u
@@ -155,6 +204,12 @@ services:
       - "8082:8082"
     networks:
       - gym-net
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8082/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
     restart: unless-stopped
 
   # ========== 微服务：checkin-service（入场核验） ==========
@@ -168,8 +223,13 @@ services:
         condition: service_healthy
       nacos:
         condition: service_healthy
+      # 等被调方健康后再启动（同上，保证订阅时实例已注册）
       card-service:
-        condition: service_started
+        condition: service_healthy
+      member-service:
+        condition: service_healthy
+      member-service-2:
+        condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-ms:3306/gym_checkin?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
       SPRING_DATASOURCE_USERNAME: checkin_u
@@ -184,6 +244,12 @@ services:
       - "8083:8083"
     networks:
       - gym-net
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8083/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
     restart: unless-stopped
 
 volumes:

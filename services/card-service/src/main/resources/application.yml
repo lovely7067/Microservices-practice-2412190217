@@ -27,12 +27,14 @@ spring:
         password: ${NACOS_PASSWORD:}
         # 个人项目独立分组，与课堂示例隔离
         group: ${NACOS_GROUP:GYM_YZ_GROUP}
-
-# HTTP 客户端超时（跨服务调用的目标实例地址改为每次通过 DiscoveryClient 解析，
-# 不再保存固定地址，因此这里只保留超时配置）
-http-client:
-  connect-timeout-ms: 2000
-  read-timeout-ms: 3000
+    # OpenFeign（第 08 周）：按服务名调用 member-service，多实例由 LoadBalancer 轮询；
+    # 保留连接 2s / 读取 3s 超时，防止被慢依赖拖垮（重试策略见 FeignErrorConfig：不自动重试）
+    openfeign:
+      client:
+        config:
+          default:
+            connect-timeout: 2000
+            read-timeout: 3000
 
 # 健康检查端点
 management:

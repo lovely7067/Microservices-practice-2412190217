@@ -1,59 +1,32 @@
 package com.zjgsu.yz.checkin.client;
 
-import java.net.URI;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
-import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Component;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
-
-import com.zjgsu.yz.checkin.exception.NotFoundException;
-import com.zjgsu.yz.checkin.exception.RemoteServiceException;
+import com.zjgsu.yz.checkin.config.FeignErrorConfig;
 import com.zjgsu.yz.checkin.web.dto.CardDto;
 
 /**
- * card-service 的调用客户端。
- * 本周改为服务发现方式：不再保存固定地址，每次调用前通过 DiscoveryClient
- * 按服务名 card-service（与对方 spring.application.name 一致）解析当前实例，
- * 再用实例的 URI 和原业务路径发送 HTTP 请求。
- * - 卡不存在（404）→ 抛出 NotFoundException
- * - 实例列表为空 / 请求失败 / 超时 → 抛出 RemoteServiceException（503），由调用方中止请求
+ * card-service 的 OpenFeign 客户端（第 08 周）。
+ *
+ * <p>使用服务名调用而不是写死容器 IP：{@code name} 即被调方在 Nacos 注册的
+ * {@code spring.application.name}，多实例经 Spring Cloud LoadBalancer 轮询分发。</p>
+ *
+ * <p>失败处理：HTTP 错误经 {@link FeignErrorConfig} 解码——
+ * 404 → {@code NotFoundException}（卡不存在），其余 → {@code RemoteServiceException}（503）；
+ * 无可用实例等本地异常由 GlobalExceptionHandler 统一映射为 503。
+ * 验卡失败时入场流程中止，绝不写入入场记录。</p>
  */
-@Component
-public class CardClient {
-
-	/** 目标服务名：与 card-service 的 spring.application.name 一致 */
-	public static final String CARD_SERVICE_ID = "card-service";
-
-	private final RestTemplate restTemplate;
-	private final DiscoveryInstanceResolver instanceResolver;
-
-	public CardClient(RestTemplate restTemplate, DiscoveryInstanceResolver instanceResolver) {
-		this.restTemplate = restTemplate;
-		this.instanceResolver = instanceResolver;
-	}
+@FeignClient(name = "card-service", path = "/api/cards", configuration = FeignErrorConfig.class)
+public interface CardClient {
 
 	/**
-	 * 按 ID 查询会员卡。
-	 * - 卡不存在（404）→ 抛出 NotFoundException
-	 * - 实例列表为空 / 请求失败 / 超时 → 抛出 RemoteServiceException（503），由调用方中止请求
+	 * 按 ID 查询会员卡（入场前必须验卡：本人卡、有效期、状态、剩余次数）。
+	 *
+	 * @param cardId 会员卡 ID
+	 * @return 会员卡信息；卡不存在时抛出 NotFoundException（404）
 	 */
-	public CardDto getCard(Long cardId) {
-		// 每次操作重新解析实例，不在启动时读取一次并永久保存地址
-		URI baseUri = instanceResolver.resolve(CARD_SERVICE_ID);
-		String url = baseUri + "/api/cards/" + cardId;
-		try {
-			ResponseEntity<CardDto> response = restTemplate.getForEntity(url, CardDto.class);
-			if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-				return response.getBody();
-			}
-			throw new NotFoundException("会员卡不存在: id=" + cardId);
-		} catch (HttpClientErrorException.NotFound e) {
-			throw new NotFoundException("会员卡不存在: id=" + cardId);
-		} catch (RestClientException e) {
-			throw new RemoteServiceException("card-service 调用失败（" + e.getMessage() + "），无法完成入场验卡");
-		}
-	}
+	@GetMapping("/{id}")
+	CardDto getCard(@PathVariable("id") Long cardId);
 }
-
