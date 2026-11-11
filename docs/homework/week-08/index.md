@@ -74,3 +74,5 @@
 | `loadbalance-01-dual-instance-ports.png` | `docker compose ps` | member-service（8081）与 member-service-2（8085）绑定不同宿主机端口，全部 healthy |
 | `loadbalance-02-member1-request-log.png` | `docker logs gym-member-service` | 实例 1 的 `GYM-INSTANCE member-1 GET /api/members/1` 请求日志——调用方实际访问到实例 1 |
 | `loadbalance-03-member2-request-log.png` | `docker logs gym-member-service-2` | 实例 2 的 `GYM-INSTANCE member-2 GET /api/members/1` 请求日志——调用方实际访问到实例 2 |
+| `test-01-all-services-pass.png` | 三服务 `mvnw test` 输出 | FeignErrorDecoderTest / MembershipCardServiceTest / CheckinServiceTest 全部执行，Tests run 11+10+4=25，三个 BUILD SUCCESS |
+| `test-03-e2e-from-root.png` | 仓库根目录运行 `scripts/e2e-test.sh` | 脚本头部注释（必须从根目录运行）+ 10 项检查全 PASS、通过 10/失败 0 |
