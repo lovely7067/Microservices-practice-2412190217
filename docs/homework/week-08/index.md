@@ -71,3 +71,6 @@
 | `openfeign-01-feign-client-code.png` | IDEA 中的 `MemberClient.java` | `@FeignClient(name="member-service", path="/api/members")` 服务名调用，不写死容器 IP |
 | `openfeign-02-error-decoder-code.png` | IDEA 中的 `FeignErrorConfig.java` | 404→NotFoundException 透传、其余→RemoteServiceException(503)，错误信息含服务名与状态码 |
 | `openfeign-03-e2e-test-output.png` | `bash scripts/e2e-test.sh` 完整输出 | 2 个 healthy 实例、6 次经 Feign 办卡全 201、双实例命中 3/3、全链路 201、通过 10/失败 0 |
+| `loadbalance-01-dual-instance-ports.png` | `docker compose ps` | member-service（8081）与 member-service-2（8085）绑定不同宿主机端口，全部 healthy |
+| `loadbalance-02-member1-request-log.png` | `docker logs gym-member-service` | 实例 1 的 `GYM-INSTANCE member-1 GET /api/members/1` 请求日志——调用方实际访问到实例 1 |
+| `loadbalance-03-member2-request-log.png` | `docker logs gym-member-service-2` | 实例 2 的 `GYM-INSTANCE member-2 GET /api/members/1` 请求日志——调用方实际访问到实例 2 |
