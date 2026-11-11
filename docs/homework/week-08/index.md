@@ -63,3 +63,11 @@
 | 调用链路图文档 | `docs/service-communication.md` |
 | 测试 | `services/*/src/test/.../FeignErrorDecoderTest.java` 等 |
 | 截图 | `docs/homework/week-08/screenshots/` |
+
+截图清单（`screenshots/`）：
+
+| 文件 | 内容 | 证明点 |
+| --- | --- | --- |
+| `openfeign-01-feign-client-code.png` | IDEA 中的 `MemberClient.java` | `@FeignClient(name="member-service", path="/api/members")` 服务名调用，不写死容器 IP |
+| `openfeign-02-error-decoder-code.png` | IDEA 中的 `FeignErrorConfig.java` | 404→NotFoundException 透传、其余→RemoteServiceException(503)，错误信息含服务名与状态码 |
+| `openfeign-03-e2e-test-output.png` | `bash scripts/e2e-test.sh` 完整输出 | 2 个 healthy 实例、6 次经 Feign 办卡全 201、双实例命中 3/3、全链路 201、通过 10/失败 0 |
