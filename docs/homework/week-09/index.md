@@ -57,6 +57,14 @@
 **验证结果**：auth-test 结果: 通过 12 / 失败 0，退出码 0（连续运行两次结果一致）；第 08 周 scripts/e2e-test.sh 复跑 10/10 无回归。
 - 截图：screenshots/06-auth-test-output.png（脚本完整输出）
 
+**实测截图清单（`screenshots/`）**：
+
+| 文件 | 内容 | 证明点 |
+| --- | --- | --- |
+| `authtest-01-script-design.png` | `Get-Content scripts/auth-test.sh -TotalCount 30 -Encoding UTF8` | 脚本头部注释：四个必测场景（未登录失败/登录取 Token/带 Token 成功/低权限访问管理接口失败）+ 扩展场景 + "可重复运行"设计说明 |
+| `authtest-02-run-output.png` | `bash scripts/auth-test.sh` 完整运行输出 | 12 项 [PASS] 逐条列出（401/200/403 全覆盖）、"通过 12 / 失败 0"、退出码 0 |
+| `authtest-03-repeatable.png` | 连续两次运行 auth-test.sh | 两次均为"通过 12 / 失败 0"且中间未清数据未重启——证明可重复运行、不依赖历史状态 |
+
 ## 单元测试
 
 member-service 12 个（新增 JwtServiceTest 3 + AuthFlowTest 5）；gateway-service 7 个（JwtAuthFilterTest：白名单/401/403/伪造头剥离/可信头注入）。构建命令：
