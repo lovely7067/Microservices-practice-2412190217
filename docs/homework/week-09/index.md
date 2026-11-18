@@ -14,6 +14,14 @@
 - 网关注册 Nacos：GYM_YZ_GROUP gateway-service 172.19.0.8:8080（见容器日志）
 - 截图：screenshots/01-gateway-routes.png（网关路由配置）、02-gateway-health.png（/api/health 200）
 
+**实测截图清单（`screenshots/`）**：
+
+| 文件 | 内容 | 证明点 |
+| --- | --- | --- |
+| `gateway-01-routes-config.png` | IDEA 中的 `gateway-service/src/main/resources/application.yml` | 5 条路由（auth/members/cards/checkins/health）、目标全部为 `lb://` 服务名不写死 IP、health-route 的 SetPath 健康入口 |
+| `gateway-02-health-entry.png` | `docker compose ps` + `curl http://localhost:8080/api/health` | gateway-service 容器映射宿主 8080（统一入口）且 healthy；经网关访问 /api/health 返回 UP（转发到 member-service actuator） |
+| `gateway-03-route-forward.png` | `curl -i http://localhost:8080/api/members` + 网关日志 | 经网关访问业务接口返回 401 JSON（请求已穿过网关到达 member 鉴权链路）；日志含 `nacos registry, GYM_YZ_GROUP gateway-service 172.19.0.8:8080 register finished` |
+
 ## 2. 认证服务
 
 **设计**：认证功能写在用户相关服务 member-service 中。新增 app_user 表（AppUser 实体：username 唯一、password_hash、role），两种角色 USER/ADMIN。登录接口 POST /api/auth/login：BCrypt（spring-security-crypto，强度 10）比对密码哈希，jjwt 0.12 签发 HS256 JWT（sub=用户名、role、2h 过期）。密码只在启动时由 DataInitializer 经 BCrypt 哈希落库，代码与数据库均无明文；JWT 密钥走环境变量 JWT_SECRET（.env 不入库，.env.example 占位）。
