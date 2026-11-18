@@ -40,6 +40,14 @@
 **验证结果**：见 auth-test 场景 5/6——USER 访问 statistics 403；同时伪造 X-User-Role: ADMIN 与 X-Gateway-Auth 头仍 403（伪造头被剥离，身份以 Token 为准）。
 - 截图：screenshots/04-unauthorized-401.png（未登录 401）、05-forbidden-403.png（越权 403）
 
+**实测截图清单（`screenshots/`）**：
+
+| 文件 | 内容 | 证明点 |
+| --- | --- | --- |
+| `gwauth-01-auth-test-output.png` | `bash scripts/auth-test.sh` 完整输出 | 12 项 PASS 一图覆盖：未登录 401、登录 200、带 Token 200、USER 访问管理接口 403（角色校验）、伪造 X-User-Role: ADMIN 仍 403（剥离伪造头）、篡改 Token 401、退出码 0 |
+| `gwauth-02-filter-code.png` | IDEA 中的 `JwtAuthFilter.java` | `③ 管理接口的角色校验`（Token 内 role != ADMIN → 403）与 `④ 剥离伪造身份头重注入可信身份`（STRIP_HEADERS.forEach(remove) + header 注入） |
+| `gwauth-03-bypass-rejected.png` | 绕过网关直连 8081 的三次 curl | 不带签名头 / 伪造 X-Gateway-Auth（forged-secret / wrong-value）访问管理接口全部 403 Forbidden——下游防绕过实测 |
+
 ## 4. 测试脚本
 
 **设计**：scripts/auth-test.sh 从仓库根目录运行，覆盖四个必测场景加扩展：①未登录访问受保护接口应失败（401）②登录获取 Token（200）③携带 Token 访问受保护接口应成功（200）④低权限 Token 访问管理接口应失败（403）；另覆盖健康入口、ADMIN 放行、伪造头、篡改 Token、密码错误共 9 场景 12 断言。脚本设计为可重复运行（每次重新登录取新 Token），输出 [PASS]/[FAIL] 清晰状态，任一失败退出非零。
