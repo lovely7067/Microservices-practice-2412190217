@@ -31,6 +31,15 @@
 **验证结果**：登录成功 200 返回 {token, tokenType=Bearer, expiresIn=7200, role=USER}；密码错误/用户不存在 -> 401（统一文案防枚举）。测试账号见 README 第 09 周小节。
 - 截图：screenshots/03-login-token.png（登录返回 Token）
 
+**实测截图清单（`screenshots/`）**：
+
+| 文件 | 内容 | 证明点 |
+| --- | --- | --- |
+| `auth-01-jwt-issue-code.png` | IDEA 中的 `JwtService.java` issue 方法 | JWT 构造：subject=用户名、claim("role")、2h expiration、signWith（HS256）——登录返回 JWT |
+| `auth-02-account-hash-code.png` | IDEA 中的 `DataInitializer.java` | admin/ADMIN 与 user1/USER 两种角色测试账号；密码经 `passwordEncoder.encode` BCrypt 哈希后落库 |
+| `auth-03-login-token.png` | `curl POST /api/auth/login` 实测 | 返回 `{"token":"eyJ...","tokenType":"Bearer","expiresIn":7200,"role":"USER"}`——登录接口真实可用 |
+| `auth-04-bcrypt-in-db.png` | `docker exec` 查询 `app_user` 表 | `password_hash` 列全部为 `$2a$10$` 开头的 BCrypt 哈希——数据库无明文密码 |
+
 ## 3. 网关鉴权
 
 **设计**：网关全局过滤器 JwtAuthFilter（GlobalFilter，order=-100）：白名单（/api/auth/login、/api/health、/actuator/**）放行；无 Token 或验签失败 -> 401 JSON；管理接口 /api/members/statistics 要求 Token 内 role=ADMIN，否则 -> 403。验签通过后剥离客户端伪造的 X-User-Id / X-User-Role / X-User-Name / X-Gateway-Auth 四个头，再从 Token claims 重新注入可信身份头与网关签名头 X-Gateway-Auth。
