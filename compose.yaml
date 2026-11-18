@@ -39,7 +39,8 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       TZ: Asia/Shanghai
     ports:
-      - "${APP_PORT:-8080}:8080"
+      # 第 09 周：宿主 8080 让给 API 网关，单体保留版改用 8090
+      - "${APP_PORT:-8090}:8080"
     networks:
       - gym-net
     restart: unless-stopped
@@ -123,6 +124,8 @@ services:
       NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
       NACOS_PASSWORD: ${NACOS_PASSWORD}
       NACOS_GROUP: ${NACOS_GROUP:-GYM_YZ_GROUP}
+      # 第 09 周：JWT 签发密钥（与 gateway-service 共享同一值，真实值在 .env，不入库）
+      JWT_SECRET: ${JWT_SECRET}
       # 实例标识：请求日志 GYM-INSTANCE 前缀，用于负载均衡验证
       INSTANCE_NAME: member-1
       TZ: Asia/Shanghai
@@ -158,6 +161,7 @@ services:
       NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
       NACOS_PASSWORD: ${NACOS_PASSWORD}
       NACOS_GROUP: ${NACOS_GROUP:-GYM_YZ_GROUP}
+      JWT_SECRET: ${JWT_SECRET}
       INSTANCE_NAME: member-2
       TZ: Asia/Shanghai
     # 避免与实例 1 绑定同一宿主机端口：映射到 8085
@@ -246,6 +250,43 @@ services:
       - gym-net
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8083/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+
+  # ========== API 网关（第 09 周）：统一对外入口 8080，路由目标为 Nacos 服务名 ==========
+  gateway-service:
+    build:
+      context: ./services/gateway-service
+    image: gym-gateway-service:week09
+    container_name: gym-gateway-service
+    depends_on:
+      nacos:
+        condition: service_healthy
+      member-service:
+        condition: service_healthy
+      member-service-2:
+        condition: service_healthy
+      card-service:
+        condition: service_healthy
+      checkin-service:
+        condition: service_healthy
+    environment:
+      # 与 member-service 共享的 JWT 验签密钥（真实值在 .env，不入库）
+      JWT_SECRET: ${JWT_SECRET}
+      NACOS_SERVER_ADDR: nacos:8848
+      NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
+      NACOS_PASSWORD: ${NACOS_PASSWORD}
+      NACOS_GROUP: ${NACOS_GROUP:-GYM_YZ_GROUP}
+      TZ: Asia/Shanghai
+    ports:
+      - "8080:8080"
+    networks:
+      - gym-net
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 30

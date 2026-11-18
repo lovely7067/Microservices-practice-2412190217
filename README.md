@@ -256,6 +256,27 @@ monolith\mvnw.cmd -f services/card-service/pom.xml test
 monolith\mvnw.cmd -f services/checkin-service/pom.xml test
 ```
 
+## API 网关与 JWT 认证（第 09 周）
+
+新增 `services/gateway-service/`：统一对外入口 **8080**（单体保留版改用 8090），路由目标为 Nacos 服务名；member-service 新增登录接口与 JWT 签发，网关统一验签。完整设计见 `docs/security.md`，作业记录见 `docs/homework/week-09/index.md`。
+
+**测试账号与角色**（由 DataInitializer 启动时自动创建，密码为 BCrypt 哈希存储）：
+
+| 角色 | 用户名 | 密码 | 可访问范围 |
+| --- | --- | --- | --- |
+| USER | `user1` | `user123` | /api/members/**（除 statistics）、/api/cards/**、/api/checkins/** |
+| ADMIN | `admin` | `admin123` | 全部接口，含管理接口 GET /api/members/statistics |
+
+**认证流程**：`POST http://localhost:8080/api/auth/login` 获取 Token → 请求受保护接口时携带 `Authorization: Bearer <token>`。未登录返回 401，USER 访问管理接口返回 403。
+
+**认证验证脚本**（从仓库根目录运行，可重复执行）：
+
+```bash
+bash scripts/auth-test.sh    # 9 场景 12 断言：未登录/登录/带 Token/越权/伪造头/坏 Token
+```
+
+注意：JWT 密钥通过 `.env` 中的 `JWT_SECRET` 注入（member 与 gateway 共享），复制 `.env.example` 后必须替换为至少 32 字节的随机值；仓库不提交真实密钥。
+
 ## 容器化运行（第五周：Docker + Compose）
 
 应用与 MySQL 已容器化，可一键构建镜像并启动整套环境。
@@ -268,7 +289,7 @@ monolith\mvnw.cmd -f services/checkin-service/pom.xml test
 Copy-Item .env.example .env    # Windows PowerShell；macOS/Linux 用 cp .env.example .env
 ```
 
-按需修改 `.env`：`MYSQL_ROOT_PASSWORD`、`MYSQL_DATABASE`、`MYSQL_USERNAME`、`MYSQL_HOST_PORT`（默认 3307，本机 3306 已被本地 MySQL 占用）、`APP_PORT`（默认 8080）。`.env` 已在 `.gitignore` 中，不会提交。
+按需修改 `.env`：`MYSQL_ROOT_PASSWORD`、`MYSQL_DATABASE`、`MYSQL_USERNAME`、`MYSQL_HOST_PORT`（默认 3307，本机 3306 已被本地 MySQL 占用）、`APP_PORT`（第 09 周起默认 8090，宿主 8080 已让给 API 网关）。`.env` 已在 `.gitignore` 中，不会提交。
 
 **2. 一键构建并启动**
 

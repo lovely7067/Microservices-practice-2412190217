@@ -18,3 +18,9 @@ spring:
     service-registry:
       auto-registration:
         enabled: false
+
+# 测试用 JWT 密钥（32 字节以上，非真实密钥）
+app:
+  jwt:
+    secret: test-only-jwt-secret-for-unit-tests-32bytes
+    ttl-minutes: 120

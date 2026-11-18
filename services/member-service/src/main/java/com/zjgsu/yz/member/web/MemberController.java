@@ -1,7 +1,9 @@
 package com.zjgsu.yz.member.web;
 
 import java.util.List;
+import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -9,9 +11,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.zjgsu.yz.member.exception.AccessDeniedException;
 import com.zjgsu.yz.member.model.Member;
 import com.zjgsu.yz.member.service.MemberService;
 import com.zjgsu.yz.member.web.dto.CreateMemberRequest;
@@ -28,9 +32,12 @@ import jakarta.validation.Valid;
 public class MemberController {
 
 	private final MemberService memberService;
+	private final String jwtSecret;
 
-	public MemberController(MemberService memberService) {
+	public MemberController(MemberService memberService,
+			@Value("${app.jwt.secret}") String jwtSecret) {
 		this.memberService = memberService;
+		this.jwtSecret = jwtSecret;
 	}
 
 	/** 会员登记（创建） */
@@ -53,5 +60,20 @@ public class MemberController {
 	@GetMapping("/{id}")
 	public ResponseEntity<MemberResponse> getMember(@PathVariable Long id) {
 		return ResponseEntity.ok(MemberResponse.of(memberService.getMember(id)));
+	}
+
+	/**
+	 * 管理接口（第 09 周）：会员统计，网关侧要求 ADMIN 角色。
+	 *
+	 * <p>防绕过网关：直连 8081 访问本接口时必须携带 X-Gateway-Auth 头
+	 * （值与 JWT_SECRET 一致，仅网关持有），缺失或不符返回 403。</p>
+	 */
+	@GetMapping("/statistics")
+	public ResponseEntity<Map<String, Object>> statistics(
+			@RequestHeader(value = "X-Gateway-Auth", required = false) String gatewayAuth) {
+		if (gatewayAuth == null || !jwtSecret.equals(gatewayAuth)) {
+			throw new AccessDeniedException("管理接口必须经 API 网关访问");
+		}
+		return ResponseEntity.ok(memberService.statistics());
 	}
 }

@@ -1,6 +1,8 @@
 package com.zjgsu.yz.member.service;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,5 +53,18 @@ public class MemberService {
 	public Member getMember(Long id) {
 		return memberRepository.findById(id)
 				.orElseThrow(() -> new NotFoundException("会员不存在: id=" + id));
+	}
+
+	/**
+	 * 会员统计（第 09 周管理接口数据来源）：总数与按性别分布。
+	 */
+	@Transactional(readOnly = true)
+	public Map<String, Object> statistics() {
+		List<Member> all = memberRepository.findAll();
+		Map<String, Object> result = new LinkedHashMap<>();
+		result.put("totalMembers", all.size());
+		result.put("maleCount", all.stream().filter(m -> "男".equals(m.getGender())).count());
+		result.put("femaleCount", all.stream().filter(m -> "女".equals(m.getGender())).count());
+		return result;
 	}
 }

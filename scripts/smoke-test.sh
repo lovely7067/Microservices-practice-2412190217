@@ -88,8 +88,8 @@ for NAME in member-service card-service checkin-service; do
   fi
 done
 
-# 附加检查：单体版本（保留运行，但不计入微服务冒烟结果）
-MONO_CODE=$(curl -s -o /tmp/smoke_monolith.json -w "%{http_code}" --max-time 5 "http://localhost:8080/actuator/health" 2>/dev/null)
+# 附加检查：单体版本（保留运行，第 09 周起改用 8090 宿主端口，8080 让给 API 网关；不计入微服务冒烟结果）
+MONO_CODE=$(curl -s -o /tmp/smoke_monolith.json -w "%{http_code}" --max-time 5 "http://localhost:8090/actuator/health" 2>/dev/null)
 echo "[INFO] monolith(单体保留版) /actuator/health -> HTTP ${MONO_CODE:-无响应}（不计入冒烟结果）"
 
 rm -f /tmp/smoke_*.json

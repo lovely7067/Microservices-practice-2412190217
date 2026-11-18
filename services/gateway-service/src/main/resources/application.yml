@@ -1,0 +1,59 @@
+# gateway-service 配置：统一对外入口 8080
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway-service
+
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        username: ${NACOS_USERNAME:nacos}
+        password: ${NACOS_PASSWORD:}
+        group: ${NACOS_GROUP:GYM_YZ_GROUP}
+
+    gateway:
+      server:
+        webflux:
+          # 第 09 周：路由目标全部使用 Nacos 服务名（lb://），不写死 IP
+          routes:
+            # 1. 登录接口（白名单，无需 Token）
+            - id: auth-route
+              uri: lb://member-service
+              predicates:
+                - Path=/api/auth/**
+            # 2. 会员接口（普通登录用户可访问；statistics 子路径网关内要求 ADMIN）
+            - id: member-route
+              uri: lb://member-service
+              predicates:
+                - Path=/api/members/**
+            # 3. 会员卡接口
+            - id: card-route
+              uri: lb://card-service
+              predicates:
+                - Path=/api/cards/**
+            # 4. 入场核验接口
+            - id: checkin-route
+              uri: lb://checkin-service
+              predicates:
+                - Path=/api/checkins/**
+            # 5. 健康检查入口：转发到 member-service 的 actuator
+            - id: health-route
+              uri: lb://member-service
+              predicates:
+                - Path=/api/health
+              filters:
+                - SetPath=/actuator/health
+
+# 第 09 周 JWT 配置：与 member-service 共享同一密钥（HS256），用于网关验签
+app:
+  jwt:
+    secret: ${JWT_SECRET:dev-only-jwt-secret-please-override-32bytes}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
